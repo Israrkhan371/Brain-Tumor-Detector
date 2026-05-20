@@ -1,0 +1,616 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain Tumor Detector</title>
+    <style>
+        /* --- HIGH-TECH CLINICAL THEME --- */
+        :root {
+            --bg-dark: #0b1120;
+            --panel-bg: #111827;
+            --border-color: #1f2937;
+            --accent-blue: #00d2ff;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .navbar {
+            background-color: #0f172a;
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        .navbar h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 1px; color: var(--text-main); }
+        .navbar h1 span { color: var(--accent-blue); }
+
+        .dashboard-container { display: flex; flex: 1; padding: 20px; gap: 20px; overflow: hidden; }
+
+        .sidebar {
+            width: 380px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            font-size: 14px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 8px;
+        }
+
+        /* --- UPDATED DROP ZONE DESIGN --- */
+        #drop-zone {
+            border: 2px dashed #475569;
+            border-radius: 12px;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            cursor: pointer;
+            background-color: rgba(11, 17, 32, 0.6);
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        #drop-zone:hover, #drop-zone.hover {
+            background-color: rgba(0, 210, 255, 0.05);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);
+        }
+        .drop-text-wrapper { display: flex; flex-direction: column; align-items: center; }
+        #drop-zone p.primary { margin: 0; font-size: 15px; color: var(--text-main); font-weight: 500; }
+        .browse-link { color: var(--accent-blue); font-weight: 600; cursor: pointer; }
+        .browse-link:hover { text-decoration: underline; }
+        #drop-zone p.secondary { font-size: 12px; color: var(--text-muted); margin: 8px 0 0 0; }
+
+        .model-stat {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .stat-labels { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: var(--text-main); }
+        .stat-labels span:nth-child(1) { font-weight: 600; }
+        .stat-labels span:nth-child(2) { font-weight: bold; }
+
+        .sparkline-container {
+            width: 100%;
+            height: 35px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            text-align: center;
+            border-top: 1px dashed #334155;
+            padding-top: 8px;
+        }
+        .metric-item { display: flex; flex-direction: column; }
+        .metric-item .m-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;}
+        .metric-item .m-val { font-size: 11px; color: var(--text-main); font-family: monospace; font-weight: bold; margin-top: 2px;}
+
+        .main-content {
+            flex: 1;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #results {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+            min-height: 0;
+        }
+
+        .result-card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            background: #1e293b;
+            padding: 10px 15px;
+            font-size: 13px;
+            color: var(--text-muted);
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-card img {
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+            object-fit: contain;
+            background-color: #000;
+            display: block;
+            border-bottom: 1px solid #1e293b;
+            filter: grayscale(100%) contrast(120%);
+            padding: 10px;
+        }
+
+        .metrics-box { padding: 15px; }
+        .metric-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #1e293b; }
+        .metric-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .metric-label { color: var(--text-muted); }
+        .actual-val { color: var(--text-main); font-weight: 600; }
+
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;}
+        .match { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); }
+        .mismatch { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+
+        /* --- CONFIDENCE BARS --- */
+        .confidence-section { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #334155; }
+        .conf-title { font-size: 10px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; letter-spacing: 1px; font-weight: 600; }
+        .conf-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; }
+        .conf-label { width: 85px; color: var(--text-main); }
+        .conf-bar-bg { flex: 1; height: 6px; background: #1e293b; border-radius: 3px; margin: 0 10px; overflow: hidden; }
+        .conf-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease-out; }
+        .conf-val { width: 35px; text-align: right; font-family: monospace; color: var(--text-main); font-weight: bold; }
+
+        #loading { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; color: var(--accent-blue); }
+        .spinner { width: 40px; height: 40px; border: 3px solid rgba(0, 210, 255, 0.1); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <h1>Brain Tumor Detector</h1>
+</div>
+
+<div class="dashboard-container">
+
+    <div class="sidebar">
+
+    <div class="sidebar-header">
+        Data Input
+    </div>
+
+    <div id="drop-zone">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/>
+            <path d="M12 12v9"/>
+            <path d="m8 16 4-4 4 4"/>
+        </svg>
+        <div class="drop-text-wrapper">
+            <p class="primary">Drag & drop files or <span class="browse-link">Browse</span></p>
+            <p class="secondary">Supported formats: .MAT, .JPG, .PNG</p>
+        </div>
+        <input type="file" id="file-input" multiple accept=".mat,.jpg,.jpeg,.png" style="display: none;">
+    </div>
+
+    <div class="sidebar-header">
+        System Architectures
+    </div>
+
+    {% for model in model_metrics[:3] %}
+
+    <div class="model-stat">
+
+        <div class="stat-labels">
+
+            <span>
+                {{ model.Model.replace("_", " ") }}
+            </span>
+
+            <span style="color: #00d2ff;">
+
+                {{ "%.2f"|format(model.Accuracy * 100) }}%
+
+            </span>
+
+        </div>
+
+        <div class="sparkline-container">
+
+            <svg viewBox="0 0 100 20"
+                 preserveAspectRatio="none"
+                 style="width: 100%; height: 100%;">
+
+                <path d="
+                    M 0 15
+                    C 10 15, 15 5, 25 8
+                    S 40 18, 50 10
+                    S 70 20, 80 5
+                    S 95 10, 100 8
+                "
+
+                fill="none"
+                stroke="#00d2ff"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                style="filter: drop-shadow(0 0 3px #00d2ff);">
+
+                </path>
+
+            </svg>
+
+        </div>
+
+        <div class="metrics-grid">
+
+            <div class="metric-item">
+                <span class="m-label">Acc</span>
+                <span class="m-val">
+                    {{ "%.3f"|format(model.Accuracy) }}
+                </span>
+            </div>
+
+            <div class="metric-item">
+                <span class="m-label">F1</span>
+                <span class="m-val">
+                    {{ "%.3f"|format(model.F1) }}
+                </span>
+            </div>
+
+            <div class="metric-item">
+                <span class="m-label">Prec</span>
+                <span class="m-val">
+                    {{ "%.3f"|format(model.Precision) }}
+                </span>
+            </div>
+
+            <div class="metric-item">
+                <span class="m-label">Rec</span>
+                <span class="m-val">
+                    {{ "%.3f"|format(model.Recall) }}
+                </span>
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endfor %}
+
+</div>
+
+    <div class="main-content">
+        <div class="sidebar-header" style="margin-bottom: 20px;">Analysis Results</div>
+
+        <div id="loading">
+            <div class="spinner"></div>
+            <div>Processing neural scans...</div>
+        </div>
+
+        <div id="results">
+            <div style="color: var(--text-muted); font-size: 14px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                Awaiting scan data input...
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const resultsDiv = document.getElementById('results');
+    const loadingDiv = document.getElementById('loading');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('hover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('hover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+
+        e.preventDefault();
+
+        dropZone.classList.remove('hover');
+
+        handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+
+        if (files.length === 0) return;
+
+        const filesToProcess = Array.from(files).slice(0, 3);
+
+        const formData = new FormData();
+
+        filesToProcess.forEach(file => {
+            formData.append('files', file);
+        });
+
+        resultsDiv.style.display = 'none';
+
+        loadingDiv.style.display = 'flex';
+
+        fetch('/predict', {
+
+            method: 'POST',
+
+            body: formData
+
+        })
+
+        .then(response => response.json())
+
+        .then(data => {
+
+            loadingDiv.style.display = 'none';
+
+            resultsDiv.style.display = 'flex';
+
+            resultsDiv.innerHTML = '';
+
+            data.forEach(item => {
+
+                if(item.error) {
+
+                    resultsDiv.innerHTML += `
+                        <div class="result-card"
+                             style="padding:20px;
+                                    color:var(--danger);
+                                    border-color:var(--danger);
+                                    justify-content:center;">
+
+                            ${item.filename} Error: ${item.error}
+
+                        </div>
+                    `;
+
+                    return;
+                }
+
+                const isMatch = item.actual === item.predicted;
+
+                const badgeClass = isMatch ? 'match' : 'mismatch';
+
+                const statusText = isMatch ? 'VERIFIED' : 'ATTENTION';
+
+                // =====================================================
+                // PROBABILITIES
+                // =====================================================
+
+                const pMeningioma = item.probabilities
+                    ? item.probabilities["Meningioma"]
+                    : 0;
+
+                const pGlioma = item.probabilities
+                    ? item.probabilities["Glioma"]
+                    : 0;
+
+                const pPituitary = item.probabilities
+                    ? item.probabilities["Pituitary Tumor"]
+                    : 0;
+
+                // =====================================================
+                // CARD
+                // =====================================================
+
+                const card = `
+
+                    <div class="result-card">
+
+                        <div class="card-header">
+
+                            <span>${item.filename}</span>
+
+                            <span style="
+                                color:${isMatch
+                                    ? 'var(--success)'
+                                    : 'var(--danger)'
+                                };
+                            ">
+                                [${statusText}]
+                            </span>
+
+                        </div>
+
+                        <img src="${item.image_data}" alt="MRI Scan">
+
+                        <div class="metrics-box">
+
+                            <div class="metric-row">
+
+                                <span class="metric-label">
+                                    Actual Diagnosis
+                                </span>
+
+                                <span class="actual-val">
+                                    ${item.actual}
+                                </span>
+
+                            </div>
+
+                            <div class="metric-row"
+                                 style="
+                                    border-bottom:none;
+                                    margin-bottom:0;
+                                    padding-bottom:0;
+                                 ">
+
+                                <span class="metric-label">
+                                    AI Prediction
+                                </span>
+
+                                <span class="badge ${badgeClass}">
+                                    ${item.predicted}
+                                </span>
+
+                            </div>
+
+                            <div class="confidence-section">
+
+                                <div class="conf-title">
+                                    Class Probabilities
+                                </div>
+
+                                <div class="conf-row">
+
+                                    <span class="conf-label">
+                                        Meningioma
+                                    </span>
+
+                                    <div class="conf-bar-bg">
+
+                                        <div class="conf-bar-fill"
+                                             style="
+                                                width:${pMeningioma}%;
+
+                                                background:#00d2ff;
+                                             ">
+                                        </div>
+
+                                    </div>
+
+                                    <span class="conf-val">
+                                        ${pMeningioma.toFixed(2)}%
+                                    </span>
+
+                                </div>
+
+                                <div class="conf-row">
+
+                                    <span class="conf-label">
+                                        Glioma
+                                    </span>
+
+                                    <div class="conf-bar-bg">
+
+                                        <div class="conf-bar-fill"
+                                             style="
+                                                width:${pGlioma}%;
+
+                                                background:#a855f7;
+                                             ">
+                                        </div>
+
+                                    </div>
+
+                                    <span class="conf-val">
+                                        ${pGlioma.toFixed(2)}%
+                                    </span>
+
+                                </div>
+
+                                <div class="conf-row">
+
+                                    <span class="conf-label">
+                                        Pituitary Tumor
+                                    </span>
+
+                                    <div class="conf-bar-bg">
+
+                                        <div class="conf-bar-fill"
+                                             style="
+                                                width:${pPituitary}%;
+
+                                                background:#38ef7d;
+                                             ">
+                                        </div>
+
+                                    </div>
+
+                                    <span class="conf-val">
+                                        ${pPituitary.toFixed(2)}%
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                `;
+
+                resultsDiv.innerHTML += card;
+
+            });
+
+        })
+
+        .catch(error => {
+
+            loadingDiv.style.display = 'none';
+
+            resultsDiv.style.display = 'flex';
+
+            resultsDiv.innerHTML = `
+                <div style="
+                    color:var(--danger);
+                    width:100%;
+                    text-align:center;
+                    margin-top:50px;
+                ">
+
+                    Connection error.
+                    Ensure Flask backend is running.
+
+                </div>
+            `;
+        });
+    }
+</script>
+
+</body>
+</html>
+
+```
